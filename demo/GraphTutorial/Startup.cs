@@ -140,7 +140,8 @@ namespace GraphTutorial
             // Add the Microsoft Identity UI pages for signin/out
             .AddMicrosoftIdentityUI();
 
-            //services.AddRazorPages();
+            //services.AddMvc();
+            services.AddRazorPages();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -11,7 +11,12 @@ namespace GraphTutorial
         {
             "User.Read",
             "MailboxSettings.Read",
-            "Calendars.ReadWrite"
+            "Calendars.ReadWrite",
+            "People.Read",
+            "User.ReadBasic.All",
+            "Presence.Read.All",
+            "Presence.Read",
+            "Contacts.Read"
         };
     }
 }
