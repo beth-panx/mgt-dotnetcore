@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
 
@@ -34,40 +36,40 @@ namespace GraphTutorial.Controllers
 
         [HttpGet]
         [Route("{*all}")]
-        public async Task<HttpResponseMessage> GetAsync(string all)
+        public async Task<IActionResult> GetAsync(string all)
         {
             return await ProcessRequestAsync("GET", all, null).ConfigureAwait(false);
         }
 
         [HttpPost]
         [Route("{*all}")]
-        public async Task<HttpResponseMessage> PostAsync(string all, [FromBody]object body)
+        public async Task<IActionResult> PostAsync(string all, [FromBody] object body)
         {
             return await ProcessRequestAsync("POST", all, body).ConfigureAwait(false);
         }
 
         [HttpDelete]
         [Route("{*all}")]
-        public async Task<HttpResponseMessage> DeleteAsync(string all)
+        public async Task<IActionResult> DeleteAsync(string all)
         {
             return await ProcessRequestAsync("DELETE", all, null).ConfigureAwait(false);
         }
 
         [HttpPut]
         [Route("{*all}")]
-        public async Task<HttpResponseMessage> PutAsync(string all, [FromBody]object body)
+        public async Task<IActionResult> PutAsync(string all, [FromBody] object body)
         {
             return await ProcessRequestAsync("PUT", all, body).ConfigureAwait(false);
         }
 
         [HttpPatch]
         [Route("{*all}")]
-        public async Task<HttpResponseMessage> PatchAsync(string all, [FromBody]object body)
+        public async Task<IActionResult> PatchAsync(string all, [FromBody] object body)
         {
             return await ProcessRequestAsync("PATCH", all, body).ConfigureAwait(false);
         }
 
-        private async Task<HttpResponseMessage> ProcessRequestAsync(string method, string all, object content)
+        private async Task<IActionResult> ProcessRequestAsync(string method, string all, object content)
         {
             var graphClient = GraphServiceClientFactory
                 .GetAuthenticatedGraphClient(async () =>
@@ -106,12 +108,12 @@ namespace GraphTutorial.Controllers
                     contentType = contentTypes?.FirstOrDefault() ?? contentType;
 
                     var byteArrayContent = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                    return ReturnHttpResponseMessage(HttpStatusCode.OK, contentType, new ByteArrayContent(byteArrayContent));
+                    return new HttpResponseMessageResult(ReturnHttpResponseMessage(HttpStatusCode.OK, contentType, new ByteArrayContent(byteArrayContent)));
                 }
             }
             catch (ServiceException ex)
             {
-                return ReturnHttpResponseMessage(ex.StatusCode, contentType, new StringContent(ex.Error.ToString()));
+                return new HttpResponseMessageResult(ReturnHttpResponseMessage(ex.StatusCode, contentType, new StringContent(ex.Error.ToString())));
             }
         }
 
@@ -140,5 +142,34 @@ namespace GraphTutorial.Controllers
             var index = baseUrl.LastIndexOf('/');
             return baseUrl.Substring(0, index);
         }
+
+        public class HttpResponseMessageResult : IActionResult
+        {
+            private readonly HttpResponseMessage _responseMessage;
+
+            public HttpResponseMessageResult(HttpResponseMessage responseMessage)
+            {
+                _responseMessage = responseMessage; // could add throw if null
+            }
+
+            public async Task ExecuteResultAsync(ActionContext context)
+            {
+                context.HttpContext.Response.StatusCode = (int)_responseMessage.StatusCode;
+
+                foreach (var header in _responseMessage.Headers)
+                {
+                    context.HttpContext.Response.Headers.TryAdd(header.Key, new StringValues(header.Value.ToArray()));
+                }
+
+                context.HttpContext.Response.ContentType = _responseMessage.Content.Headers.ContentType.ToString();
+
+                using (var stream = await _responseMessage.Content.ReadAsStreamAsync())
+                {
+                    await stream.CopyToAsync(context.HttpContext.Response.Body);
+                    await context.HttpContext.Response.Body.FlushAsync();
+                }
+            }
+        }
+
     }
 }
