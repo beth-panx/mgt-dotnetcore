@@ -24,21 +24,22 @@ namespace GraphTutorial.Controllers
             _logger = logger;
         }
 
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
             // TEMPORARY
             // Get the token and display it
-            try
-            {
-                string token = await _tokenAcquisition
-                    .GetAccessTokenForUserAsync(GraphConstants.Scopes);
-                return View().WithInfo("Token acquired", token);
-            }
-            catch (MsalUiRequiredException)
-            {
-                return Challenge();
-            }
-        }
+            // try
+            // {
+            //     string token = await _tokenAcquisition
+            //         .GetAccessTokenForUserAsync(GraphConstants.Scopes);
+            //     return View().WithInfo("Token acquired", token);
+            // }
+            // catch (MsalUiRequiredException)
+            // {
+            //     return Challenge();
+            // }
+            return View();
+        }         
 
         public IActionResult Privacy()
         {
